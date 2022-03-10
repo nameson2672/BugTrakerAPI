@@ -1,0 +1,19 @@
+# Bug Tracker
+
+This is the bug tracker app that will be built with the [ASP.NET](http://ASP.NET) web API and a NEXTJS frontend.
+
+It will help teams at any company to issue, track and solve a bug. It made the collaboration and working together seamless and easy. 
+
+The architecture is simple and contains a number of docker containers. The API will be in the one docker with the SQL server in the other as for test database is in a container and the frontend will be in another container. As API is state-less it can scale by using a load balancer and spinning a new instance with an API container and connecting it with the database. The rough diagram for basic deployment is:
+
+[https://whimsical.com/TPV63MQVJ4LmmUcS5SXVdU](https://whimsical.com/TPV63MQVJ4LmmUcS5SXVdU)
+
+# Feature:
+
+- Create a team
+- Add a member to the team with their role if the role is not specified their profile role at the company will be in the team role
+- Any member in a team can create bug issues and  assign it type or which group does it belong to
+- Team lead, Team creator, and senior engineer can assign bugs to a specific group and a specific person in the group
+- Group members and the team as a whole can discuss the bug at their respective place
+- Can message a team member for help or any other thing
+- If the team project is linked with the app from GitHub and if any issue is created in GitHub issue should be auto-posted on the app with the link and other info to the issue.
