@@ -10,6 +10,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="NewFolder1\**" />
+    <Compile Remove="NewFolder\**" />
+    <Content Remove="NewFolder1\**" />
+    <Content Remove="NewFolder\**" />
+    <EmbeddedResource Remove="NewFolder1\**" />
+    <EmbeddedResource Remove="NewFolder\**" />
+    <None Remove="NewFolder1\**" />
+    <None Remove="NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.2" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="6.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.3" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="6.0.3" />
@@ -20,6 +32,10 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.14.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.1.5" />
     <PackageReference Include="System.Configuration.ConfigurationManager" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Migrations\" />
   </ItemGroup>
 
 </Project>
