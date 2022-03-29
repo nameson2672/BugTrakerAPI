@@ -42,7 +42,7 @@ namespace BugTrakerAPI.Controllers
                 }
                 else
                 {
-                    return BadRequest(result);
+                    return BadRequest(result.Errors);
                 }
             }
             return BadRequest();
