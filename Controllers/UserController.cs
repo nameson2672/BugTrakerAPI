@@ -1,4 +1,5 @@
-﻿using BugTrakerAPI.Model;
+﻿using BugTrakerAPI.Helper;
+using BugTrakerAPI.Model;
 using BugTrakerAPI.Model.ReturnModel;
 using BugTrakerAPI.ViewModel;
 using Microsoft.AspNetCore.Authorization;
@@ -81,19 +82,20 @@ namespace BugTrakerAPI.Controllers
                     else
                     {
                         User.success = false;
-                        User.errors = result.Errors.ToString();
+                        var err = new SystemErrorParser();
+                        User.errors = err.IdentityErrorParser(result.Errors);
                         
                         return BadRequest(User);
                     }
                 }
                         User.success=false;
-                        User.errors = "Email already Taken";
-                       
+                        User.errors = new List<string> {"Email already registor try login"};
+
                 return BadRequest(User);
 
             }
             User.success = false;
-            User.errors = "Provide all the information";
+            User.errors = new List<string> { "Provide all information"};
             return BadRequest(User);
 
         }
