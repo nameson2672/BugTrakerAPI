@@ -25,41 +25,37 @@ namespace BugTrakerAPI.Controllers
             _signInManager = signInManager;
 
         }
-        [HttpGet]
+        /// <summary>
+        /// Create A new user
+        /// </summary>
+        /// <param name="student">Student Model</param>
+        /// /// <remarks>
+        /// Sample response by API:
+        ///
+        ///     POST /registor
+        ///     {
+        ///        "status": true,
+        ///        "name": "Item #1",
+        ///        "isComplete": true
+        ///     }
+        ///
+        /// </remarks>
+        /// <response code="201">Returns the newly created item</response>
+        /// <response code="400">If the item is null</response>
         [AllowAnonymous]
-        public async Task<IActionResult> CheckUsernameAvaiability(string username)
-        {
-            if (username.Length > 0)
-            {
-                var user = await _userManager.FindByNameAsync(username);
-                if (user == null)
-                {
-                    return Ok(username);
-                }
-                else
-                {
-                    return Ok("username not available");
-                }
-            }
-
-
-            return BadRequest("provide the username");
-
-        }
-        [AllowAnonymous]
-        [HttpPost("")]
+        [HttpPost("registor")]
         public async Task<IActionResult> CreateUser(UserViewModel user)
         {
              LoginRes User = new()
                 {
-                    status = false,
+                 success = false,
                     errors = null,
                     data = null
                 };
             if (ModelState.IsValid)
             {
                
-                if (await _userManager.FindByNameAsync(user.UserName) == null)
+                if (await _userManager.FindByNameAsync(user.Email) == null)
                 {
                     UserInfoModel userInfo = new UserInfoModel();
                     userInfo.Id = Guid.NewGuid().ToString();
@@ -67,7 +63,7 @@ namespace BugTrakerAPI.Controllers
                     userInfo.PhoneNumber = user.PhoneNumber;
                     userInfo.PasswordHash = user.Password;
                     userInfo.Name = user.Name;
-                    userInfo.UserName = user.UserName;
+                    userInfo.UserName = user.Email;
 
                     var result = await _userManager.CreateAsync(userInfo, user.Password);
                     if (result.Succeeded)
@@ -84,38 +80,31 @@ namespace BugTrakerAPI.Controllers
                     }
                     else
                     {
-                        
+                        User.success = false;
                         User.errors = result.Errors.ToString();
                         
                         return BadRequest(User);
                     }
                 }
-                
-                        User.errors = "Username already Taken";
+                        User.success=false;
+                        User.errors = "Email already Taken";
                        
                 return BadRequest(User);
 
             }
-
+            User.success = false;
             User.errors = "Provide all the information";
             return BadRequest(User);
 
         }
-        [HttpPost("Login")]
+        [HttpPost("login")]
         [AllowAnonymous]
         public async Task<IActionResult> LoginUser(UserViewModel user)
         {
             if (ModelState.IsValid)
             {
-                UserInfoModel userInfo = new UserInfoModel();
-                userInfo.Id = Guid.NewGuid().ToString();
-                userInfo.Email = user.Email;
-                userInfo.PhoneNumber = user.PhoneNumber;
-                /* userInfo.ConformPassword = user.ConformPassword;
-                 userInfo.Password = user.Password;*/
-                userInfo.Name = user.Name;
-                userInfo.UserName = user.UserName;
-                var userInfoFromDatabase = await _userManager.FindByEmailAsync(userInfo.Email);
+                
+                var userInfoFromDatabase = await _userManager.FindByEmailAsync(user.Email);
                 if (userInfoFromDatabase != null)
                 {
                     var signInuser = await _signInManager.CheckPasswordSignInAsync(userInfoFromDatabase, user.Password, false);

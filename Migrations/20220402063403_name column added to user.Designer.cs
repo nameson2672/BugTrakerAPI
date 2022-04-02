@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BugTrakerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20220330080825_Initial database setup")]
-    partial class Initialdatabasesetup
+    [Migration("20220402063403_name column added to user")]
+    partial class namecolumnaddedtouser
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
