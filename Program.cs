@@ -1,9 +1,11 @@
 using BugTrakerAPI.Model;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
 
@@ -36,14 +38,29 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8
                 .GetBytes(builder.Configuration.GetSection("AppSettings:Token").Value)),
             ValidateIssuer = false,
-            ValidateAudience = false
+            ValidateAudience = false,
+            ValidateLifetime = true,
+            RequireExpirationTime = false,
+            ClockSkew = TimeSpan.Zero
         };
     });
 
 // Identity user and role provider
-builder.Services.AddIdentity<IdentityUser, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
 builder.Services.AddSwaggerGen(options =>
 {
+    options.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
+    {
+        Type = SecuritySchemeType.Http,
+        Scheme = JwtBearerDefaults.AuthenticationScheme.ToLowerInvariant(),
+        In = ParameterLocation.Header,
+        Name = "Authorization",
+        BearerFormat = "JWT",
+        Description = "JWT Authorization header using the Bearer scheme."
+    });
+
+    options.OperationFilter<AuthResponsesOperationFilter>();
+
     options.SwaggerDoc("v1", new OpenApiInfo
     {
         Version = "v1",
@@ -60,6 +77,7 @@ builder.Services.AddSwaggerGen(options =>
             Name = "Example License",
             Url = new Uri("https://example.com/license")
         }
+
     });
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
@@ -81,3 +99,47 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+ internal class AuthResponsesOperationFilter : IOperationFilter
+    {
+        public void Apply(OpenApiOperation operation, OperationFilterContext context)
+        {
+            var attributes = context.MethodInfo?.DeclaringType?.GetCustomAttributes(true)
+                                .Union(context.MethodInfo.GetCustomAttributes(true));
+
+            if (attributes.OfType<IAllowAnonymous>().Any())
+            {
+                return;
+            }
+
+            var authAttributes = attributes.OfType<IAuthorizeData>();
+
+            if (authAttributes.Any())
+            {
+                operation.Responses["401"] = new OpenApiResponse { Description = "Unauthorized" };
+
+                if (authAttributes.Any(att => !String.IsNullOrWhiteSpace(att.Roles) || !String.IsNullOrWhiteSpace(att.Policy)))
+                {
+                    operation.Responses["403"] = new OpenApiResponse { Description = "Forbidden" };
+                }
+
+                operation.Security = new List<OpenApiSecurityRequirement>
+                {
+                    new OpenApiSecurityRequirement
+                    {
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Id = "BearerAuth",
+                                    Type = ReferenceType.SecurityScheme
+                                }
+                            },
+                            Array.Empty<string>()
+                        }
+                    }
+                };
+            }
+        }
+    }

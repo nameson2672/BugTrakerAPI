@@ -21,5 +21,6 @@ namespace BugTrakerAPI.ViewModel
         public string Email { get; set; } = string.Empty;
 
         public string PhoneNumber { get; set; } = string.Empty;
+        public bool RememberMe {get; set;} 
     }
 }

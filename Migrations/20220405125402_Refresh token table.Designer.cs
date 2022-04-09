@@ -4,6 +4,7 @@ using BugTrakerAPI.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BugTrakerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220405125402_Refresh token table")]
+    partial class Refreshtokentable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -254,11 +256,14 @@ namespace BugTrakerAPI.Migrations
 
                     b.Property<string>("UserId")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserInfoModelId")
                         .HasColumnType("nvarchar(450)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
+                    b.HasIndex("UserInfoModelId");
 
                     b.ToTable("RefreshToken");
                 });
@@ -316,13 +321,9 @@ namespace BugTrakerAPI.Migrations
 
             modelBuilder.Entity("TodoApp.Models.RefreshToken", b =>
                 {
-                    b.HasOne("BugTrakerAPI.Model.UserInfoModel", "User")
+                    b.HasOne("BugTrakerAPI.Model.UserInfoModel", null)
                         .WithMany("RefreshTokens")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
+                        .HasForeignKey("UserInfoModelId");
                 });
 
             modelBuilder.Entity("BugTrakerAPI.Model.UserInfoModel", b =>
