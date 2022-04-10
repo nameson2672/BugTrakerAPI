@@ -7,7 +7,7 @@ namespace BugTrakerAPI.Model
 {
     public class ApplicationDbContext : IdentityDbContext<UserInfoModel>
     {
-         public DbSet<RefreshToken> RefreshTokens {get;set;}
+         public virtual DbSet<RefreshToken> RefreshTokens {get;set;}
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
         {
            

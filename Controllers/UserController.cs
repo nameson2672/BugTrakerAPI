@@ -10,6 +10,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 namespace BugTrakerAPI.Controllers
 {
@@ -24,13 +25,16 @@ namespace BugTrakerAPI.Controllers
         private readonly JwtConfig _jwtConfig;
         private readonly SignInManager<UserInfoModel> _signInManager;
         private readonly ApplicationDbContext _apiDbContext;
+        private readonly TokenValidationParameters _tokenValidationParams;
         public UserController(
             UserManager<UserInfoModel> userManager,
             IConfiguration configuration,
             SignInManager<UserInfoModel> signInManager,
             ApplicationDbContext apiDbContext,
             RoleManager<IdentityRole> roleManager,
-            IOptionsMonitor<JwtConfig> optionsMonitor)
+            IOptionsMonitor<JwtConfig> optionsMonitor,
+            TokenValidationParameters tokenValidationParameters
+            )
         {
             _configuration = configuration;
             _userManager = userManager;
@@ -38,7 +42,7 @@ namespace BugTrakerAPI.Controllers
             _apiDbContext = apiDbContext;
             _roleManager = roleManager;
             _jwtConfig = optionsMonitor.CurrentValue;
-
+            _tokenValidationParams = tokenValidationParameters;
         }
         /// <summary>
         /// Create A new user
@@ -116,46 +120,46 @@ namespace BugTrakerAPI.Controllers
         }
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> LoginUser(UserViewModel user)
+        public async Task<IActionResult> LoginUser(LoginViewModel user)
         {
+            var response = new LoginRes();
             if (ModelState.IsValid)
             {
 
-                var userInfoFromDatabase = await _userManager.FindByEmailAsync(user.Email);
-                if (userInfoFromDatabase != null)
+                var dbUser = await _userManager.FindByEmailAsync(user.Email);
+                if (dbUser != null)
                 {
-                    var signInuser = await _signInManager.CheckPasswordSignInAsync(userInfoFromDatabase, user.Password, false);
+                    var signInuser = await _signInManager.CheckPasswordSignInAsync(dbUser, user.Password, false);
                     if (signInuser.Succeeded)
                     {
-                        return Ok(new
+                        var newlyFormTokens = await CreateToken(dbUser);
+                        response.success = true;
+                        response.data = new LoginCred
                         {
-                            success = true,
-                            data = signInuser
-
-                        });
+                            Name = dbUser.Name,
+                            Email=dbUser.Email,
+                            PhoneNumber = dbUser.PhoneNumber,
+                            Token = newlyFormTokens.Token,
+                            RefreshToken = newlyFormTokens.RefreshToken
+                        };
+                        return Ok(response);
                     }
 
-
-                    return BadRequest(new
-                    {
-                        sucess = false,
-                        errors = "Email Or Password doesn't Match"
-                    });
+                    response.success = false;
+                    response.errors = new List<string> { "Email or Password doesn't match" };
+                    return BadRequest(response);
                 }
-                return BadRequest(new
-                {
-                    sucess = false,
-                    errors = "User doesn't exists"
-                });
+
+                response.success = false;
+                response.errors = new List<string> { "User dosen't exists" };
+                return BadRequest(response);
 
 
             };
-            return BadRequest(new
-            {
-                sucess = false,
-                errors = "Provide all informations"
-            }
-                    );
+
+            response.success = false;
+            response.errors = new List<string> { "invalid crediantial" };
+            return BadRequest(response);
         }
 
         [HttpPost]
@@ -175,10 +179,41 @@ namespace BugTrakerAPI.Controllers
         }
         private async Task<TokensResponse> CreateToken(UserInfoModel user)
         {
-            
-            return new TokensResponse{
-                Token = "asdasd",
-                RefreshToken = "asdasd"
+            var jwtTokenHandler = new JwtSecurityTokenHandler();
+
+            var key = Encoding.ASCII.GetBytes(_jwtConfig.Secret);
+
+            var claims = await GetAllValidClaims(user);
+
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(claims),
+                Expires = DateTime.UtcNow.AddSeconds(30), // 5-10 
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = jwtTokenHandler.CreateToken(tokenDescriptor);
+            var jwtToken = jwtTokenHandler.WriteToken(token);
+
+            var refreshToken = new RefreshToken()
+            {
+                JwtId = token.Id,
+                IsUsed = false,
+                IsRevorked = false,
+                UserId = user.Id,
+                AddedDate = DateTime.UtcNow,
+                ExpiryDate = DateTime.UtcNow.AddMonths(6),
+                Token = RandomString(35) + Guid.NewGuid()
+            };
+
+            await _apiDbContext.RefreshTokens.AddAsync(refreshToken);
+            await _apiDbContext.SaveChangesAsync();
+
+            return new TokensResponse
+            {
+                success = true,
+                Token = jwtToken,
+                RefreshToken = refreshToken.Token
             };
         }
         private async Task<List<Claim>> GetAllValidClaims(UserInfoModel user)
@@ -217,13 +252,97 @@ namespace BugTrakerAPI.Controllers
             return claims;
         }
 
-        // private async Task<LoginRes> VerifyAndGenerateToken(TokenRequest tokenRequest)
-        // {
-        //     var jwtTokenHandler = new JwtSecurityTokenHandler();
+        private async Task<TokensResponse> VerifyAndGenerateToken(TokenRequest tokenRequest)
+        {
+            TokensResponse response = new TokensResponse { };
+            var jwtTokenHandler = new JwtSecurityTokenHandler();
+            try
+            {
+                // Validate JWT token   --1
+                var tokenInVerification = jwtTokenHandler.ValidateToken(tokenRequest.Token, _tokenValidationParams, out var validateToken);
+
+                // Validate encryption algorithm
+                if (validateToken is JwtSecurityToken jwtSecurityToken)
+                {
+                    var result = jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase);
+
+                    if (result == false)
+                    {
+                        response.success = false;
+                        response.errors = new List<string> { "Token is not valid please re login and try again" };
+                        return response;
+                    }
+                }
+
+                //validate existatnce of the token
+                var storedToken = await _apiDbContext.RefreshTokens.FirstOrDefaultAsync(x => x.Token == tokenRequest.RefreshToken);
+
+                if (storedToken == null)
+                {
+                    response.success = false;
+                    response.errors = new List<string> { "Token doesn't exist" };
+                    return response;
+                }
+
+                // validate if token is used
+                if (storedToken.IsUsed)
+                {
+                    response.success = false;
+                    response.errors = new List<string> { "Token is already used." };
+                    return response;
+                }
+
+                // calidate if revoked
+                if (storedToken.IsRevorked)
+                {
+                    response.success = false;
+                    response.errors = new List<string> { "Token has been revoked" };
+                    return response;
+                }
+
+                // validate the id
+                var jti = tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value;
+
+                if (storedToken.JwtId != jti)
+                {
+                    response.success = false;
+                    response.errors = new List<string> { "Token does not match" };
+                    return response;
+                }
+
+                storedToken.IsUsed = true;
+                _apiDbContext.RefreshTokens.Update(storedToken);
+                await _apiDbContext.SaveChangesAsync();
+
+                // generate a new JWT and refresh token
+                var dbUser = await _userManager.FindByIdAsync(storedToken.UserId);
+                return await CreateToken(dbUser);
+
+            }
+            catch (Exception error)
+            {
+                if (error.Message.Contains("Lifetime validation failed. The token is expired."))
+                {
+
+                    response.success = false;
+                    response.errors = new List<string> { "Token has expired please re-login" };
+                    return response;
 
 
 
-        // }
+                }
+                else
+                {
+                    response.success = false;
+                    response.errors = new List<string> { "Something went wrong." };
+                    return response;
+
+                };
+            }
+
+
+
+        }
 
         private DateTime UnixTimeStampToDateTime(long unixTimeStamp)
         {
