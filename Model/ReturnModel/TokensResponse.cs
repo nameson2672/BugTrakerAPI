@@ -7,10 +7,10 @@ namespace BugTrakerAPI.Model.ReturnModel
         [Required]
         public bool success {get; set;}
         [Required]
-        public string Token { get; set; }
+        public string? Token { get; set; }
 
          [Required]
-        public string RefreshToken { get; set; }
+        public string? RefreshToken { get; set; }
         public List<string>? errors {get; set;}
     }
 }

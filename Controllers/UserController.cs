@@ -11,12 +11,13 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace BugTrakerAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
     public class UserController : ControllerBase
     {
         private readonly UserManager<UserInfoModel> _userManager;
@@ -137,7 +138,7 @@ namespace BugTrakerAPI.Controllers
                         response.data = new LoginCred
                         {
                             Name = dbUser.Name,
-                            Email=dbUser.Email,
+                            Email = dbUser.Email,
                             PhoneNumber = dbUser.PhoneNumber,
                             Token = newlyFormTokens.Token,
                             RefreshToken = newlyFormTokens.RefreshToken
@@ -163,18 +164,29 @@ namespace BugTrakerAPI.Controllers
         }
 
         [HttpPost]
-        [Authorize]
-        public async Task<IActionResult> GetData(string username)
+        public async Task<IActionResult> GetTokens(TokenRequest inputToken)
         {
-            try
+            var response = new TokensResponse();
+            if (ModelState.IsValid)
             {
-                var userInfoFromDatabase = await _userManager.FindByEmailAsync(username);
-                return Ok(userInfoFromDatabase);
+                var newTokens = await VerifyAndGenerateToken(inputToken);
+                if (newTokens.success)
+                {
+                    response.success = true;
+                    response.Token = newTokens.Token;
+                    response.RefreshToken = newTokens.RefreshToken;
+                    return Ok(response);
+                }
+
+                response.success = false;
+                response.errors = newTokens.errors;
+                return BadRequest(response);
+
             }
-            catch
-            {
-                return BadRequest("error");
-            }
+            response.success = false;
+            response.errors = new List<string> { "Invlaid crediantial" };
+            return BadRequest(response);
+
 
         }
         private async Task<TokensResponse> CreateToken(UserInfoModel user)
@@ -188,7 +200,7 @@ namespace BugTrakerAPI.Controllers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddSeconds(30), // 5-10 
+                Expires = DateTime.UtcNow.AddMinutes(1),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
@@ -334,7 +346,7 @@ namespace BugTrakerAPI.Controllers
                 else
                 {
                     response.success = false;
-                    response.errors = new List<string> { "Something went wrong." };
+                    response.errors = new List<string> {"Something went wrong." };
                     return response;
 
                 };

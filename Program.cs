@@ -14,10 +14,10 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 
-builder.Services.AddControllers().ConfigureApiBehaviorOptions(options => 
-    {   
-        options.SuppressModelStateInvalidFilter = true;     
-    });;
+builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
+    {
+        options.SuppressModelStateInvalidFilter = true;
+    }); ;
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -32,15 +32,16 @@ builder.Services.AddHttpContextAccessor();
 
 var key = Encoding.ASCII.GetBytes(builder.Configuration["JwtConfig:Secret"]);
 
-            var tokenValidationParams = new TokenValidationParameters {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = new SymmetricSecurityKey(key),
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    ValidateLifetime = true,
-                    RequireExpirationTime = false,
-                    ClockSkew = TimeSpan.Zero
-                };
+var tokenValidationParams = new TokenValidationParameters
+{
+    ValidateIssuerSigningKey = true,
+    IssuerSigningKey = new SymmetricSecurityKey(key),
+    ValidateIssuer = false,
+    ValidateAudience = false,
+    ValidateLifetime = true,
+    RequireExpirationTime = false,
+    ClockSkew = TimeSpan.Zero
+};
 
 builder.Services.AddSingleton(tokenValidationParams);
 builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("JwtConfig"));
@@ -49,6 +50,32 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = tokenValidationParams;
+        options.Events = new JwtBearerEvents
+        {
+
+            OnChallenge = async (context) =>
+                {
+                    // this is a default method
+                    // the response statusCode and headers are set here
+                    context.HandleResponse();
+
+                    // AuthenticateFailure property contains 
+                    // the details about why the authentication has failed
+
+                    context.Response.StatusCode = 401;
+                    var ers = context.ErrorDescription != null? context.ErrorDescription: "Somethig went worng with Token" ; 
+                    var json = new
+                    {
+                        success = false,
+                        data = "null",
+                        errors = new List<string> { ers }
+                    };
+
+                    // we can write our own custom response content here
+                    await context.HttpContext.Response.WriteAsJsonAsync(json);
+
+                }
+            };
     });
 
 // Identity user and role provider
@@ -106,30 +133,30 @@ app.MapControllers();
 
 app.Run();
 
- internal class AuthResponsesOperationFilter : IOperationFilter
+internal class AuthResponsesOperationFilter : IOperationFilter
+{
+    public void Apply(OpenApiOperation operation, OperationFilterContext context)
     {
-        public void Apply(OpenApiOperation operation, OperationFilterContext context)
-        {
-            var attributes = context.MethodInfo?.DeclaringType?.GetCustomAttributes(true)
-                                .Union(context.MethodInfo.GetCustomAttributes(true));
+        var attributes = context.MethodInfo?.DeclaringType?.GetCustomAttributes(true)
+                            .Union(context.MethodInfo.GetCustomAttributes(true));
 
-            if (attributes.OfType<IAllowAnonymous>().Any())
+        if (attributes.OfType<IAllowAnonymous>().Any())
+        {
+            return;
+        }
+
+        var authAttributes = attributes.OfType<IAuthorizeData>();
+
+        if (authAttributes.Any())
+        {
+            operation.Responses["401"] = new OpenApiResponse { Description = "Unauthorized" };
+
+            if (authAttributes.Any(att => !String.IsNullOrWhiteSpace(att.Roles) || !String.IsNullOrWhiteSpace(att.Policy)))
             {
-                return;
+                operation.Responses["403"] = new OpenApiResponse { Description = "Forbidden" };
             }
 
-            var authAttributes = attributes.OfType<IAuthorizeData>();
-
-            if (authAttributes.Any())
-            {
-                operation.Responses["401"] = new OpenApiResponse { Description = "Unauthorized" };
-
-                if (authAttributes.Any(att => !String.IsNullOrWhiteSpace(att.Roles) || !String.IsNullOrWhiteSpace(att.Policy)))
-                {
-                    operation.Responses["403"] = new OpenApiResponse { Description = "Forbidden" };
-                }
-
-                operation.Security = new List<OpenApiSecurityRequirement>
+            operation.Security = new List<OpenApiSecurityRequirement>
                 {
                     new OpenApiSecurityRequirement
                     {
@@ -146,6 +173,6 @@ app.Run();
                         }
                     }
                 };
-            }
         }
     }
+}
