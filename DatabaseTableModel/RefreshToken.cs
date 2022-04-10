@@ -1,9 +1,6 @@
-using System;
 using System.ComponentModel.DataAnnotations.Schema;
-using BugTrakerAPI.Model;
-using Microsoft.AspNetCore.Identity;
 
-namespace TodoApp.Models
+namespace BugTrakerAPI.Model
 {
     public class RefreshToken
     {
