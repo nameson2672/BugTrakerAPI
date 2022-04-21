@@ -12,6 +12,8 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using BugTrakerAPI.Services;
+using Org.BouncyCastle.Asn1.Ocsp;
 
 namespace BugTrakerAPI.Controllers
 {
@@ -27,6 +29,7 @@ namespace BugTrakerAPI.Controllers
         private readonly SignInManager<UserInfoModel> _signInManager;
         private readonly ApplicationDbContext _apiDbContext;
         private readonly TokenValidationParameters _tokenValidationParams;
+        private readonly IMailSender _sendMail;
         public UserController(
             UserManager<UserInfoModel> userManager,
             IConfiguration configuration,
@@ -34,7 +37,8 @@ namespace BugTrakerAPI.Controllers
             ApplicationDbContext apiDbContext,
             RoleManager<IdentityRole> roleManager,
             IOptionsMonitor<JwtConfig> optionsMonitor,
-            TokenValidationParameters tokenValidationParameters
+            TokenValidationParameters tokenValidationParameters,
+            IMailSender sendMail
             )
         {
             _configuration = configuration;
@@ -44,6 +48,7 @@ namespace BugTrakerAPI.Controllers
             _roleManager = roleManager;
             _jwtConfig = optionsMonitor.CurrentValue;
             _tokenValidationParams = tokenValidationParameters;
+            _sendMail = sendMail;
         }
         /// <summary>
         /// Create A new user
@@ -163,8 +168,10 @@ namespace BugTrakerAPI.Controllers
             return BadRequest(response);
         }
 
-        [HttpPost]
+        [HttpPost("getTokens")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetTokens(TokenRequest inputToken)
+
         {
             var response = new TokensResponse();
             if (ModelState.IsValid)
@@ -189,6 +196,19 @@ namespace BugTrakerAPI.Controllers
 
 
         }
+        [HttpPost("verifyEmail")]
+        [AllowAnonymous]
+        public async Task<IActionResult> MailVerify(){
+            var user = User.FindFirstValue(ClaimTypes.Email);
+            var applicationUser = await _userManager.GetUserAsync(User);
+
+            return Ok(applicationUser);
+            //_sendMail.SendMail(mail);
+        }
+        [HttpGet("GoogleApiCall")]
+        public OkObjectResult GoogleCall(){
+            return Ok("Nameson Gaudel");
+        }
         private async Task<TokensResponse> CreateToken(UserInfoModel user)
         {
             var jwtTokenHandler = new JwtSecurityTokenHandler();
@@ -200,7 +220,7 @@ namespace BugTrakerAPI.Controllers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(1),
+                Expires = DateTime.UtcNow.AddMinutes(55),
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
@@ -270,6 +290,7 @@ namespace BugTrakerAPI.Controllers
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             try
             {
+                
                 // Validate JWT token   --1
                 var tokenInVerification = jwtTokenHandler.ValidateToken(tokenRequest.Token, _tokenValidationParams, out var validateToken);
 
@@ -373,4 +394,3 @@ namespace BugTrakerAPI.Controllers
         }
     }
 }
-

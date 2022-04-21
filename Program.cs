@@ -1,4 +1,6 @@
+using BugTrakerAPI.Helper;
 using BugTrakerAPI.Model;
+using BugTrakerAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -32,7 +34,7 @@ builder.Services.AddHttpContextAccessor();
 
 var key = Encoding.ASCII.GetBytes(builder.Configuration["JwtConfig:Secret"]);
 
-var tokenValidationParams = new TokenValidationParameters
+var tokenValidationParams2 = new TokenValidationParameters
 {
     ValidateIssuerSigningKey = true,
     IssuerSigningKey = new SymmetricSecurityKey(key),
@@ -42,17 +44,33 @@ var tokenValidationParams = new TokenValidationParameters
     RequireExpirationTime = false,
     ClockSkew = TimeSpan.Zero
 };
-
+var tokenValidationParams = new TokenValidationParameters
+{
+    ValidateIssuerSigningKey = true,
+    IssuerSigningKey = new SymmetricSecurityKey(key),
+    ValidateIssuer = false,
+    ValidateAudience = false,
+    ValidateLifetime = false,
+    RequireExpirationTime = false,
+    ClockSkew = TimeSpan.Zero
+};
+builder.Services.AddSingleton<IMailSender, MailSender>();
 builder.Services.AddSingleton(tokenValidationParams);
 builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("JwtConfig"));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+    .AddJwtBearer(async options =>
     {
-        options.TokenValidationParameters = tokenValidationParams;
+        
+        options.TokenValidationParameters = tokenValidationParams2;
         options.Events = new JwtBearerEvents
         {
-
+        //    OnTokenValidated = async (context) =>{
+               
+        //       var user = context.HttpContext.User.Claims.First();
+        //       var applicationUser = await _userManager.GetUserAsync(user);
+        //  },
+            
             OnChallenge = async (context) =>
                 {
                     // this is a default method
