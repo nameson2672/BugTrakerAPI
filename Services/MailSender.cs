@@ -21,12 +21,12 @@ namespace BugTrakerAPI.Services
          }
             .Property(Send.FromEmail, "namesongaudel@protonmail.com")
             .Property(Send.FromName, "Nameson Gaudel")
-            .Property(Send.Subject, "Your email flight plan!")
-            .Property(Send.TextPart, "Dear passenger, welcome to Mailjet! May the delivery force be with you!")
-            .Property(Send.HtmlPart, "<h3>Dear passenger, welcome to <a href=\"https://www.mailjet.com/\">Mailjet</a>!<br />May the delivery force be with you!")
+            .Property(Send.Subject, mailInfo.subject)
+            .Property(Send.TextPart, mailInfo.message)
+            .Property(Send.HtmlPart, mailInfo.message)
             .Property(Send.Recipients, new JArray {
                 new JObject {
-                 {"Email", "namesongaudel.ng@gmail.com"}
+                 {"Email", mailInfo.toemail}
                  }
                 });
          MailjetResponse response = await client.PostAsync(request);

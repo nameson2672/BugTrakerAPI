@@ -14,6 +14,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using BugTrakerAPI.Services;
 using Org.BouncyCastle.Asn1.Ocsp;
+using System.Net;
+using System.Web;
 
 namespace BugTrakerAPI.Controllers
 {
@@ -196,17 +198,61 @@ namespace BugTrakerAPI.Controllers
 
 
         }
-        [HttpPost("verifyEmail")]
-        [AllowAnonymous]
-        public async Task<IActionResult> MailVerify(){
-            var user = User.FindFirstValue(ClaimTypes.Email);
-            var applicationUser = await _userManager.GetUserAsync(User);
+        [HttpPost("getEmailVerify")]
+        public async Task<IActionResult> MailVerify()
+        {
+            EmailResponse response = new()
+            {
+                success = false
+            };
+            var email = User.FindFirstValue(ClaimTypes.Email);
+            if (email != null)
+            {
+                var user = await _userManager.FindByEmailAsync(email);
+                var emailConformationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                MailModel mail = new();
+                mail.toemail = user.Email;
+                mail.toname = user.Name;
+                mail.subject = "Verify Email";
+                var url = "https://localhost:7186/api/User/verify?id=" + user.Id + "&code=" + emailConformationToken;
+                var parseUrl = Url.Action("VerifyCodeFromMail", "User", new { id = user.Id, code = emailConformationToken }, protocol: HttpContext.Request.Scheme);
+                var urlRedirect = "To verify the mail tou provided click on <a href=" + url + ">Link</a>";
+                mail.message = urlRedirect;
+                
+                //_sendMail.SendMail(mail);
+                return Ok(new {url = url, parseUrl = parseUrl});
+            }
+            response.errors = new List<string> { "User not found." };
+            return Ok(response);
 
-            return Ok(applicationUser);
-            //_sendMail.SendMail(mail);
+        }
+        [HttpGet("verify")]
+        [AllowAnonymous]
+        public async Task<IActionResult> VerifyCodeFromMail(string id, string code)
+        {
+            EmailResponse response = new();
+            response.success = false;
+            
+                var user = await _userManager.FindByIdAsync(id);
+                if (user != null)
+                {
+                    var parsecode = Uri.EscapeDataString(code);
+                    var decode = Uri.UnescapeDataString(code);
+                    var result = await _userManager.ConfirmEmailAsync(user, code);
+                    response.success = true;
+                    
+                    response.Message = "Email Verified.";
+                    return Ok(response);
+                }
+                response.errors = new List<string> { "User can't found." };
+                return Ok(response);
+            
+            response.errors = new List<string> { "Code or user id is null." };
+            return Ok(response);
         }
         [HttpGet("GoogleApiCall")]
-        public OkObjectResult GoogleCall(){
+        public OkObjectResult GoogleCall()
+        {
             return Ok("Nameson Gaudel");
         }
         private async Task<TokensResponse> CreateToken(UserInfoModel user)
@@ -290,7 +336,7 @@ namespace BugTrakerAPI.Controllers
             var jwtTokenHandler = new JwtSecurityTokenHandler();
             try
             {
-                
+
                 // Validate JWT token   --1
                 var tokenInVerification = jwtTokenHandler.ValidateToken(tokenRequest.Token, _tokenValidationParams, out var validateToken);
 
@@ -367,7 +413,7 @@ namespace BugTrakerAPI.Controllers
                 else
                 {
                     response.success = false;
-                    response.errors = new List<string> {"Something went wrong." };
+                    response.errors = new List<string> { "Something went wrong." };
                     return response;
 
                 };

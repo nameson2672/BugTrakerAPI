@@ -97,7 +97,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Identity user and role provider
-builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>();
+builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
