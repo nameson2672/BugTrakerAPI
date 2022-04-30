@@ -16,6 +16,7 @@ using BugTrakerAPI.Services;
 using Org.BouncyCastle.Asn1.Ocsp;
 using System.Net;
 using System.Web;
+using Microsoft.AspNetCore.WebUtilities;
 
 namespace BugTrakerAPI.Controllers
 {
@@ -210,17 +211,23 @@ namespace BugTrakerAPI.Controllers
             {
                 var user = await _userManager.FindByEmailAsync(email);
                 var emailConformationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                // emailConformationToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailConformationToken));
+                emailConformationToken = HttpUtility.UrlEncode(emailConformationToken);
                 MailModel mail = new();
                 mail.toemail = user.Email;
                 mail.toname = user.Name;
                 mail.subject = "Verify Email";
                 var url = "https://localhost:7186/api/User/verify?id=" + user.Id + "&code=" + emailConformationToken;
-                var parseUrl = Url.Action("VerifyCodeFromMail", "User", new { id = user.Id, code = emailConformationToken }, protocol: HttpContext.Request.Scheme);
+                var parseUrl = Url.Page(
+                "/User/verify",
+                pageHandler: null,
+                values: new { id = user.Id, code = emailConformationToken },
+                protocol: Request.Scheme);
                 var urlRedirect = "To verify the mail tou provided click on <a href=" + url + ">Link</a>";
                 mail.message = urlRedirect;
-                
+
                 //_sendMail.SendMail(mail);
-                return Ok(new {url = url, parseUrl = parseUrl});
+                return Ok(new { url = url, parseUrl = parseUrl });
             }
             response.errors = new List<string> { "User not found." };
             return Ok(response);
@@ -232,24 +239,86 @@ namespace BugTrakerAPI.Controllers
         {
             EmailResponse response = new();
             response.success = false;
-            
-                var user = await _userManager.FindByIdAsync(id);
-                if (user != null)
-                {
-                    var parsecode = Uri.EscapeDataString(code);
-                    var decode = Uri.UnescapeDataString(code);
-                    var result = await _userManager.ConfirmEmailAsync(user, code);
-                    response.success = true;
-                    
-                    response.Message = "Email Verified.";
-                    return Ok(response);
-                }
-                response.errors = new List<string> { "User can't found." };
-                return Ok(response);
-            
-            response.errors = new List<string> { "Code or user id is null." };
+
+            if (id == null || code == null)
+            {
+                response.errors = new List<string> { "Provide valid token and id" };
+                return BadRequest(response);
+            }
+
+            var user = await _userManager.FindByIdAsync(id);
+            if (user == null)
+            {
+                response.errors = new List<string> { "User not found" };
+                return BadRequest(response);
+            }
+
+            //code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
+
+            var result = await _userManager.ConfirmEmailAsync(user, code);
+            if (result.Succeeded == false)
+            {
+                response.errors = new List<string> { "Error with provided Token" };
+                return BadRequest(response);
+            }
+            response.success = true;
+            response.Message = "Email Verified.";
             return Ok(response);
         }
+        [HttpGet("GetResetPasswordToken")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetResetPasswordToken(string email)
+        {
+            if (email == null)
+            {
+                return BadRequest("Email Not valid");
+            }
+            var user = await _userManager.FindByEmailAsync(email);
+            if (user == null)
+            {
+                return BadRequest("User not found");
+            }
+
+            var token = await _userManager.GeneratePasswordResetTokenAsync(user);
+            var encodedResetToken = Encoding.UTF8.GetBytes(token);
+            var validResetToken = WebEncoders.Base64UrlEncode(encodedResetToken);
+
+
+            string url = $"https://localhost:7186/api/User/ResetPassword?userId={user.Id}&code={validResetToken}";
+            var resetUrl = Url.Action("ResetPassword", "User", new { userId = user.Id, code = validResetToken }, protocol: HttpContext.Request.Scheme);
+
+            return Ok(new { resetUrl, url, code = token });
+        }
+
+        [HttpPost("ResetPassword")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPassword(ResetPassportViewModel resetInfo)
+        {
+            if (ModelState.IsValid)
+            {
+                var user = await _userManager.FindByEmailAsync(resetInfo.Email);
+                if (user == null)
+                {
+                    return Ok("user id invalid");
+                }
+                var codeIn = resetInfo.code;
+                var decodedToken = WebEncoders.Base64UrlDecode(codeIn);
+                var code = Encoding.UTF8.GetString(decodedToken);
+
+                var resetStatus = await _userManager.ResetPasswordAsync(user, code, resetInfo.Password);
+
+                if (!resetStatus.Succeeded)
+                {
+                    return BadRequest(new { errors = resetStatus.Errors, code, codeIn });
+                }
+                return Ok(new { code, decodedToken, codeIn });
+            }
+            return BadRequest("Invalid Crediantials");    
+
+
+        }
+
+
         [HttpGet("GoogleApiCall")]
         public OkObjectResult GoogleCall()
         {

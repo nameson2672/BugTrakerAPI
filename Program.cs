@@ -97,7 +97,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Identity user and role provider
-builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
+builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders()
+    .AddTokenProvider<AesDataProtectorTokenProvider<UserInfoModel>>(TokenOptions.DefaultProvider);
+
+
 builder.Services.AddSwaggerGen(options =>
 {
     options.AddSecurityDefinition("BearerAuth", new OpenApiSecurityScheme
@@ -133,6 +136,14 @@ builder.Services.AddSwaggerGen(options =>
     var xmlFilename = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
+
+// builder.Services
+//      .AddIdentity<AppUser, AppRole>()
+//      .AddEntityFrameworkStores<AppDbContext>()
+//      .AddDefaultTokenProviders()
+//      .AddTokenProvider<AesDataProtectorTokenProvider<AppUser>>(TokenOptions.DefaultProvider);
+
+builder.Services.AddScoped(typeof(ISettingSupplier), typeof(SettingSupplier));
 
 var app = builder.Build();
 

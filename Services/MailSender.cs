@@ -12,7 +12,7 @@ namespace BugTrakerAPI.Services
 
         async Task IMailSender.SendMail(MailModel mailInfo)
         {
-            MailjetClient client = new MailjetClient("b1a483acd9814e3accfc202d95ec5e9f", "c8fbedbd22101dc6df80de6aebda051e"){};
+            MailjetClient client = new MailjetClient("secretId", "secretId"){};
             {
             };
       MailjetRequest request = new MailjetRequest
