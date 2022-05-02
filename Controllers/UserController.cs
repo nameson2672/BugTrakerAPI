@@ -280,18 +280,19 @@ namespace BugTrakerAPI.Controllers
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            var encodedResetToken = Encoding.UTF8.GetBytes(token);
-            var validResetToken = WebEncoders.Base64UrlEncode(encodedResetToken);
+            //var encodedResetToken = Encoding.UTF8.GetBytes(token);
+            //var validResetToken = WebEncoders.Base64UrlEncode(encodedResetToken);
 
+            
+            //string url = $"https://localhost:7186/api/User/ResetPassword?userId={user.Id}&code={validResetToken}";
+            //var resetUrl = Url.Action("ResetPassword", "User", new { userId = user.Id, code = token }, protocol: HttpContext.Request.Scheme);
 
-            string url = $"https://localhost:7186/api/User/ResetPassword?userId={user.Id}&code={validResetToken}";
-            var resetUrl = Url.Action("ResetPassword", "User", new { userId = user.Id, code = validResetToken }, protocol: HttpContext.Request.Scheme);
-
-            return Ok(new { resetUrl, url, code = token });
+            return Ok(new {code = token});
         }
 
         [HttpPost("ResetPassword")]
         [AllowAnonymous]
+
         public async Task<IActionResult> ResetPassword(ResetPassportViewModel resetInfo)
         {
             if (ModelState.IsValid)
@@ -301,17 +302,16 @@ namespace BugTrakerAPI.Controllers
                 {
                     return Ok("user id invalid");
                 }
-                var codeIn = resetInfo.code;
-                var decodedToken = WebEncoders.Base64UrlDecode(codeIn);
-                var code = Encoding.UTF8.GetString(decodedToken);
-
-                var resetStatus = await _userManager.ResetPasswordAsync(user, code, resetInfo.Password);
+                //var codeIn = HttpUtility.HtmlDecode(resetInfo.code);
+                //var decodedToken = WebEncoders.Base64UrlDecode(codeIn);
+                //var code = Encoding.UTF8.GetString(decodedToken);
+                var resetStatus = await _userManager.ResetPasswordAsync(user, resetInfo.code, resetInfo.Password);
 
                 if (!resetStatus.Succeeded)
                 {
-                    return BadRequest(new { errors = resetStatus.Errors, code, codeIn });
+                    return BadRequest(new { errors = resetStatus.Errors,  resetInfo.code });
                 }
-                return Ok(new { code, decodedToken, codeIn });
+                return Ok("Sucess");
             }
             return BadRequest("Invalid Crediantials");    
 

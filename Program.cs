@@ -97,9 +97,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // Identity user and role provider
-builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders()
-    .AddTokenProvider<AesDataProtectorTokenProvider<UserInfoModel>>(TokenOptions.DefaultProvider);
-
+builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
+//.AddTokenProvider<AesDataProtectorTokenProvider<UserInfoModel>>(TokenOptions.DefaultProvider)
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -143,7 +142,12 @@ builder.Services.AddSwaggerGen(options =>
 //      .AddDefaultTokenProviders()
 //      .AddTokenProvider<AesDataProtectorTokenProvider<AppUser>>(TokenOptions.DefaultProvider);
 
-builder.Services.AddScoped(typeof(ISettingSupplier), typeof(SettingSupplier));
+//builder.Services.AddScoped(typeof(ISettingSupplier), typeof(SettingSupplier));
+builder.Services.Configure<DataProtectionTokenProviderOptions>(o =>
+        {
+
+            o.TokenLifespan = TimeSpan.FromHours(2);
+        });
 
 var app = builder.Build();
 
