@@ -19,11 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="DotNetEnv" Version="2.3.0" />
-    <PackageReference Include="Google.Apis.Gmail.v1" Version="1.57.0.2650" />
-    <PackageReference Include="MailChimp.NET" Version="1.1.92" />
     <PackageReference Include="Mailjet.Api" Version="2.0.2" />
-    <PackageReference Include="Mailkit" Version="3.2.0" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.4" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="6.0.4" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.4" />

@@ -13,7 +13,6 @@ using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using BugTrakerAPI.Services;
-using Org.BouncyCastle.Asn1.Ocsp;
 using System.Net;
 using System.Web;
 using Microsoft.AspNetCore.WebUtilities;
@@ -70,7 +69,7 @@ namespace BugTrakerAPI.Controllers
         /// <response code="201">Returns the newly created item</response>
         /// <response code="400">If the item is null</response>
         [AllowAnonymous]
-        [HttpPost("registor")]
+        [HttpPost("Registor")]
         public async Task<IActionResult> CreateUser(UserViewModel user)
         {
             LoginRes User = new()
@@ -89,7 +88,8 @@ namespace BugTrakerAPI.Controllers
                     userInfo.Email = user.Email;
                     userInfo.PhoneNumber = user.PhoneNumber;
                     userInfo.PasswordHash = user.Password;
-                    userInfo.Name = user.Name;
+                    userInfo.FirstName = user.Name;
+                    userInfo.LastName = user.Name;
                     userInfo.UserName = user.Email;
 
                     var result = await _userManager.CreateAsync(userInfo, user.Password);
@@ -100,7 +100,7 @@ namespace BugTrakerAPI.Controllers
                         {
                             Token = tokensForUser.Token,
                             RefreshToken = tokensForUser.RefreshToken,
-                            Name = userInfo.Name,
+                            //Name = userInfo.Name,
                             PhoneNumber = userInfo.PhoneNumber,
                             Email = userInfo.Email
                         };
@@ -127,7 +127,7 @@ namespace BugTrakerAPI.Controllers
             return BadRequest(User);
 
         }
-        [HttpPost("login")]
+        [HttpPost("Login")]
         [AllowAnonymous]
         public async Task<IActionResult> LoginUser(LoginViewModel user)
         {
@@ -145,7 +145,7 @@ namespace BugTrakerAPI.Controllers
                         response.success = true;
                         response.data = new LoginCred
                         {
-                            Name = dbUser.Name,
+                            Name = dbUser.FirstName,
                             Email = dbUser.Email,
                             PhoneNumber = dbUser.PhoneNumber,
                             Token = newlyFormTokens.Token,
@@ -171,14 +171,18 @@ namespace BugTrakerAPI.Controllers
             return BadRequest(response);
         }
 
-        [HttpPost("getTokens")]
+        [HttpPost("GetTokens")]
         [AllowAnonymous]
         public async Task<IActionResult> GetTokens(TokenRequest inputToken)
 
         {
             var response = new TokensResponse();
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
+                 response.success = false;
+            response.errors = new List<string> { "Invlaid crediantial" };
+            return BadRequest(response);
+            }
                 var newTokens = await VerifyAndGenerateToken(inputToken);
                 if (newTokens.success)
                 {
@@ -192,14 +196,12 @@ namespace BugTrakerAPI.Controllers
                 response.errors = newTokens.errors;
                 return BadRequest(response);
 
-            }
-            response.success = false;
-            response.errors = new List<string> { "Invlaid crediantial" };
-            return BadRequest(response);
+            
+           
 
 
         }
-        [HttpPost("getEmailVerify")]
+        [HttpGet("GetEmailVerify")]
         public async Task<IActionResult> MailVerify()
         {
             EmailResponse response = new()
@@ -207,59 +209,53 @@ namespace BugTrakerAPI.Controllers
                 success = false
             };
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (email != null)
+            if (email == null)
             {
-                var user = await _userManager.FindByEmailAsync(email);
-                var emailConformationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
-                // emailConformationToken = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(emailConformationToken));
-                emailConformationToken = HttpUtility.UrlEncode(emailConformationToken);
-                MailModel mail = new();
-                mail.toemail = user.Email;
-                mail.toname = user.Name;
-                mail.subject = "Verify Email";
-                var url = "https://localhost:7186/api/User/verify?id=" + user.Id + "&code=" + emailConformationToken;
-                var parseUrl = Url.Page(
-                "/User/verify",
-                pageHandler: null,
-                values: new { id = user.Id, code = emailConformationToken },
-                protocol: Request.Scheme);
-                var urlRedirect = "To verify the mail tou provided click on <a href=" + url + ">Link</a>";
-                mail.message = urlRedirect;
-
-                //_sendMail.SendMail(mail);
-                return Ok(new { url = url, parseUrl = parseUrl });
+                response.errors = new List<string> { "User not found." };
+                return Ok(response);
             }
-            response.errors = new List<string> { "User not found." };
-            return Ok(response);
+
+            var user = await _userManager.FindByEmailAsync(email);
+            var emailConformationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+            MailModel mail = new();
+            mail.toemail = user.Email;
+            mail.toname = user.FirstName + " " + user.LastName;
+            mail.subject = "Verify Email";
+            var url = "https://localhost:7186/api/User/verify?id=" + user.Id + "&code=" + emailConformationToken;
+            var parseUrl = Url.Action("VerifyCodeFromMail", "User", new { userId = user.Id, code = emailConformationToken }, protocol: HttpContext.Request.Scheme);
+            var urlRedirect = "To verify the click on <a href=" + parseUrl + ">Link</a>";
+            mail.message = urlRedirect;
+            await _sendMail.SendMail(mail);
+            return Ok(new { token = emailConformationToken, parseUrl = parseUrl });
+
+
 
         }
-        [HttpGet("verify")]
+        [HttpGet("ConfirmEmail")]
         [AllowAnonymous]
-        public async Task<IActionResult> VerifyCodeFromMail(string id, string code)
+        public async Task<IActionResult> VerifyCodeFromMail(string userId, string code)
         {
             EmailResponse response = new();
             response.success = false;
 
-            if (id == null || code == null)
+            if (userId == null || code == null)
             {
                 response.errors = new List<string> { "Provide valid token and id" };
                 return BadRequest(response);
             }
 
-            var user = await _userManager.FindByIdAsync(id);
+            var user = await _userManager.FindByIdAsync(userId);
             if (user == null)
             {
                 response.errors = new List<string> { "User not found" };
                 return BadRequest(response);
             }
 
-            //code = Encoding.UTF8.GetString(WebEncoders.Base64UrlDecode(code));
-
             var result = await _userManager.ConfirmEmailAsync(user, code);
             if (result.Succeeded == false)
             {
                 response.errors = new List<string> { "Error with provided Token" };
-                return BadRequest(response);
+                return BadRequest(result.Errors);
             }
             response.success = true;
             response.Message = "Email Verified.";
@@ -269,25 +265,35 @@ namespace BugTrakerAPI.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetResetPasswordToken(string email)
         {
+            EmailResponse response = new();
+            response.success = false;
             if (email == null)
             {
-                return BadRequest("Email Not valid");
+                 response.errors = new List<string> { "Provide valid token." };
+                return BadRequest(response);
             }
             var user = await _userManager.FindByEmailAsync(email);
             if (user == null)
             {
-                return BadRequest("User not found");
+                response.errors = new List<string> { "Email doesn't exixts on database." };
+                return BadRequest(response);
             }
 
             var token = await _userManager.GeneratePasswordResetTokenAsync(user);
-            //var encodedResetToken = Encoding.UTF8.GetBytes(token);
-            //var validResetToken = WebEncoders.Base64UrlEncode(encodedResetToken);
+            var resetUrl = Url.Action("ResetPassword", "User", new { userId = user.Id, code = token }, protocol: HttpContext.Request.Scheme);
 
-            
-            //string url = $"https://localhost:7186/api/User/ResetPassword?userId={user.Id}&code={validResetToken}";
-            //var resetUrl = Url.Action("ResetPassword", "User", new { userId = user.Id, code = token }, protocol: HttpContext.Request.Scheme);
+            MailModel mail = new();
+            mail.toemail = user.Email;
+            mail.toname = user.FirstName + " " + user.LastName;
+            mail.subject = "Verify Email";
+            var mailMSG = "To reset the password of your bug traker account click on link <a href=" + resetUrl + ">Link</a>";
+            mail.message = mailMSG;
+            await _sendMail.SendMail(mail);
 
-            return Ok(new {code = token});
+             response.success = true;
+            response.Message = "Rest link has been send to your email oprn the link.";
+
+            return Ok(response);
         }
 
         [HttpPost("ResetPassword")]
@@ -309,19 +315,24 @@ namespace BugTrakerAPI.Controllers
 
                 if (!resetStatus.Succeeded)
                 {
-                    return BadRequest(new { errors = resetStatus.Errors,  resetInfo.code });
+                    return BadRequest(new { errors = resetStatus.Errors, resetInfo.code });
                 }
                 return Ok("Sucess");
             }
-            return BadRequest("Invalid Crediantials");    
+            return BadRequest("Invalid Crediantials");
 
 
         }
 
 
         [HttpGet("GoogleApiCall")]
-        public OkObjectResult GoogleCall()
+        [AllowAnonymous]
+        public async Task<IActionResult> GoogleCall(string nameNew)
         {
+            var user = await _userManager.FindByEmailAsync("Namesongaudel.ng@gmail.com");
+            //user.Name = nameNew;
+            await _userManager.UpdateAsync(user);
+
             return Ok("Nameson Gaudel");
         }
         private async Task<TokensResponse> CreateToken(UserInfoModel user)

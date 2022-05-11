@@ -7,8 +7,9 @@ namespace BugTrakerAPI.Model
 {
     public class UserInfoModel : IdentityUser
     {
-        public string Id {set; get;}
-        public string Name { get; set; } = String.Empty;
+        public string FirstName { get; set; }
+        public string LastName {get; set;}
+
        
     }
 }

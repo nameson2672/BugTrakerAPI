@@ -143,11 +143,6 @@ builder.Services.AddSwaggerGen(options =>
 //      .AddTokenProvider<AesDataProtectorTokenProvider<AppUser>>(TokenOptions.DefaultProvider);
 
 //builder.Services.AddScoped(typeof(ISettingSupplier), typeof(SettingSupplier));
-builder.Services.Configure<DataProtectionTokenProviderOptions>(o =>
-        {
-
-            o.TokenLifespan = TimeSpan.FromHours(2);
-        });
 
 var app = builder.Build();
 
