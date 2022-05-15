@@ -1,6 +1,8 @@
+using Amazon.S3;
 using BugTrakerAPI.Helper;
 using BugTrakerAPI.Model;
 using BugTrakerAPI.Services;
+using BugTrakerAPI.Services.uploadToS3;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -136,13 +138,10 @@ builder.Services.AddSwaggerGen(options =>
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFilename));
 });
 
-// builder.Services
-//      .AddIdentity<AppUser, AppRole>()
-//      .AddEntityFrameworkStores<AppDbContext>()
-//      .AddDefaultTokenProviders()
-//      .AddTokenProvider<AesDataProtectorTokenProvider<AppUser>>(TokenOptions.DefaultProvider);
-
-//builder.Services.AddScoped(typeof(ISettingSupplier), typeof(SettingSupplier));
+// Add aws s3 as service
+builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
+builder.Services.AddAWSService<IAmazonS3>();
+builder.Services.AddSingleton<IUploadToS3, UploadToS3>();
 
 var app = builder.Build();
 

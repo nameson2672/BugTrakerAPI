@@ -15,8 +15,8 @@ namespace BugTrakerAPI.Services
             MailjetClient client = new MailjetClient("secretId", "secretId"){};
             {
             };
-      MailjetRequest request = new MailjetRequest
-         {
+            MailjetRequest request = new MailjetRequest
+            {
             Resource = Send.Resource,
          }
             .Property(Send.FromEmail, "namesongaudel@protonmail.com")
