@@ -210,7 +210,9 @@ namespace BugTrakerAPI.Controllers
             var urlRedirect = "To verify the click on <a href=" + parseUrl + ">Link</a>";
             mail.message = urlRedirect;
             await _sendMail.SendMail(mail);
-            return Ok(new { token = emailConformationToken, parseUrl = parseUrl });
+            response.success = true;
+            response.Message = "Verify mail link send to email please check your mail.";
+            return Ok(response);
 
 
 
@@ -285,47 +287,64 @@ namespace BugTrakerAPI.Controllers
 
         public async Task<IActionResult> ResetPassword(ResetPassportViewModel resetInfo)
         {
-            if (ModelState.IsValid)
+            EmailResponse response = new();
+            response.success = false;
+
+            if (!ModelState.IsValid)
             {
-                var user = await _userManager.FindByEmailAsync(resetInfo.Email);
-                if (user == null)
-                {
-                    return Ok("user id invalid");
-                }
-                //var codeIn = HttpUtility.HtmlDecode(resetInfo.code);
-                //var decodedToken = WebEncoders.Base64UrlDecode(codeIn);
-                //var code = Encoding.UTF8.GetString(decodedToken);
-                var resetStatus = await _userManager.ResetPasswordAsync(user, resetInfo.code, resetInfo.Password);
-
-                if (!resetStatus.Succeeded)
-                {
-                    return BadRequest(new { errors = resetStatus.Errors, resetInfo.code });
-                }
-                return Ok("Sucess");
+                response.errors = new List<string> {"please fill in the from properly"};
+                return BadRequest(response);
             }
-            return BadRequest("Invalid Crediantials");
+            var user = await _userManager.FindByEmailAsync(resetInfo.Email);
+            if (user == null)
+            {
+                response.errors = new List<string> {"User is not valid user."};
+                return Ok(response);
+            }
+            //var codeIn = HttpUtility.HtmlDecode(resetInfo.code);
+            //var decodedToken = WebEncoders.Base64UrlDecode(codeIn);
+            //var code = Encoding.UTF8.GetString(decodedToken);
+            var resetStatus = await _userManager.ResetPasswordAsync(user, resetInfo.code, resetInfo.Password);
 
+            if (!resetStatus.Succeeded)
+            {
+                var errors = new SystemErrorParser();
+                response.errors = errors.IdentityErrorParser(resetStatus.Errors);
 
+                return BadRequest(response);
+            }
+            response.success = true;
+            response.Message = "password reset sucessful try login with new password";
+            return Ok(response);
         }
 
 
-        [HttpPost]
+        [HttpPost("UploadProfilPic")]
         public async Task<IActionResult> PostFiles(IFormFile file)
-        {   
+        {
+            var response = new FileUploadResponse();
             var email = User.FindFirstValue(ClaimTypes.Email);
             var user = await _userManager.FindByEmailAsync(email);
             var bucketName = "bugtrakerimages";
             var previousAvatar = user.AvatarLink;
-            var uploadReturn = await _upload.upload(file,bucketName,new List<string>{"image/jpeg","image/png","image/jpg"});
-            if(!uploadReturn.Sucess) return BadRequest(uploadReturn.Error);
-            if(previousAvatar !=null){
+            var uploadReturn = await _upload.upload(file, bucketName, new List<string> { "image/jpeg", "image/png", "image/jpg" });
+            if (!uploadReturn.Sucess)
+            {
+                response.success = uploadReturn.Sucess;
+                response.errors = new List<string> { uploadReturn.Error };
+                return BadRequest(response);
+            }
+            if (previousAvatar != null)
+            {
                 var nameFile = previousAvatar.Substring(52);
                 // delete the previously uploaded avtar image
                 await _s3Client.DeleteObjectAsync(bucketName, nameFile);
             }
             user.AvatarLink = uploadReturn.AvatarLink;
             await _userManager.UpdateAsync(user);
-            return Ok(user);
+            response.success = true;
+            response.AvatarLink = uploadReturn.AvatarLink;
+            return Ok(response);
         }
         private async Task<TokensResponse> CreateToken(UserInfoModel user)
         {
