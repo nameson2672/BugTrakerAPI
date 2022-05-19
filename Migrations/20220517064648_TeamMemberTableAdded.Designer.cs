@@ -4,6 +4,7 @@ using BugTrakerAPI.Model;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BugTrakerAPI.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20220517064648_TeamMemberTableAdded")]
+    partial class TeamMemberTableAdded
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -31,19 +33,17 @@ namespace BugTrakerAPI.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("coverImageLink")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("createrId")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("description")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("teamAvatar")
-                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("teamName")
@@ -52,20 +52,27 @@ namespace BugTrakerAPI.Migrations
 
                     b.HasKey("teamId");
 
+                    b.HasIndex("createrId");
+
                     b.ToTable("Team");
                 });
 
             modelBuilder.Entity("BugTrakerAPI.DatabaseTableModel.TeamMembers", b =>
                 {
-                    b.Property<string>("UserId")
+                    b.Property<string>("Id")
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("TeamId")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("UserId", "TeamId");
+                    b.HasKey("Id");
 
-                    b.HasIndex("TeamId");
+                    b.HasIndex("UserId");
 
                     b.ToTable("TeamMembers");
                 });
@@ -318,23 +325,26 @@ namespace BugTrakerAPI.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
-            modelBuilder.Entity("BugTrakerAPI.DatabaseTableModel.TeamMembers", b =>
+            modelBuilder.Entity("BugTrakerAPI.DatabaseTableModel.Team", b =>
                 {
-                    b.HasOne("BugTrakerAPI.DatabaseTableModel.Team", "teamModel")
-                        .WithMany("teamMembers")
-                        .HasForeignKey("TeamId")
+                    b.HasOne("BugTrakerAPI.Model.UserInfoModel", "User")
+                        .WithMany()
+                        .HasForeignKey("createrId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("BugTrakerAPI.Model.UserInfoModel", "userModel")
-                        .WithMany("teamMembers")
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("BugTrakerAPI.DatabaseTableModel.TeamMembers", b =>
+                {
+                    b.HasOne("BugTrakerAPI.Model.UserInfoModel", "user")
+                        .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("teamModel");
-
-                    b.Navigation("userModel");
+                    b.Navigation("user");
                 });
 
             modelBuilder.Entity("BugTrakerAPI.Model.RefreshToken", b =>
@@ -397,16 +407,6 @@ namespace BugTrakerAPI.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
-                });
-
-            modelBuilder.Entity("BugTrakerAPI.DatabaseTableModel.Team", b =>
-                {
-                    b.Navigation("teamMembers");
-                });
-
-            modelBuilder.Entity("BugTrakerAPI.Model.UserInfoModel", b =>
-                {
-                    b.Navigation("teamMembers");
                 });
 #pragma warning restore 612, 618
         }
