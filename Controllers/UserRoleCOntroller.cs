@@ -36,7 +36,25 @@ namespace BugTrakerAPI.Controllers
             if(!createdRole.Succeeded) return BadRequest("Faild to create role.");
             return Ok("Created Sucessfully");
         }
-       
+        [HttpGet("GetAllRoles")]
+        [AllowAnonymous]
+        public IActionResult GetAllRoles(){
+            var roles =  _db.Roles.ToList();
+            return Ok(roles);
+        }
+        [HttpPost("GiveMeARole")]
+        [AllowAnonymous]
+        public async Task<IActionResult> AssignRoleTOUser(string email, string roleName){
+            if(String.IsNullOrEmpty(email) || String.IsNullOrEmpty(roleName)) return BadRequest("provide valid email or role name");
+            var user = await _userManager.FindByEmailAsync(email);
+            var doesRoleExists = await _roleManager.RoleExistsAsync(roleName);
+            if(user == null || !doesRoleExists) return BadRequest("user is not a valid user");
+            var roleAssigned = await _userManager.AddToRoleAsync(user, roleName);
+            if(!roleAssigned.Succeeded) return BadRequest(roleAssigned.Errors.ToList());
+            return Ok("role assigned to user");
+        }
+
+        
 
     }
 }
