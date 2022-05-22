@@ -14,6 +14,10 @@ namespace BugTrakerAPI.Model
         public string? AvatarLink {get; set;}
         public ICollection<TeamMembers> teamMembers {get; set;}
         public ICollection<TeamAdmin> teamAdmin { get; set; }
+        public ICollection<Team> team {get;set;}
+        //public ICollection<TeamCreater> teamCreaters  { get; set; }
+        
+        
         
         
     }

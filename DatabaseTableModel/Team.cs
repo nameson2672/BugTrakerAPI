@@ -19,6 +19,7 @@ namespace BugTrakerAPI.DatabaseTableModel
          public DateTime CreatedAt { get; set; } = DateTime.Now;
         public ICollection<TeamMembers> teamMembers {get; set;}
         public ICollection<TeamAdmin> teamAdmin { get; set; }
+        public UserInfoModel userModel {get; set;}
         
         
     }
