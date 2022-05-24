@@ -7,7 +7,7 @@ namespace BugTrakerAPI.DatabaseTableModel
     public class Team
     {
         [Key]
-        public string teamId {get; set;}
+        public string teamId {get; set;} = Guid.NewGuid().ToString();
         [Required]
         public string teamName {get; set;}
         public string workingOn {get; set;}

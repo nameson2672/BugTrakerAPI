@@ -1,6 +1,8 @@
 using System.Security.Claims;
+using AutoMapper;
 using BugTrakerAPI.DatabaseTableModel;
 using BugTrakerAPI.Model;
+using BugTrakerAPI.Model.ReturnModel;
 using BugTrakerAPI.ViewModel;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
@@ -17,38 +19,52 @@ namespace BugTrakerAPI.Controllers
         private readonly ApplicationDbContext _db;
         private readonly UserManager<UserInfoModel> _userManager;
         private readonly RoleManager<IdentityRole> _roleManager;
+         private readonly IMapper _mapper;
 
 
 
-        public TeamController(ApplicationDbContext db, UserManager<UserInfoModel> userManager, RoleManager<IdentityRole> roleManager)
+        public TeamController(ApplicationDbContext db, UserManager<UserInfoModel> userManager, RoleManager<IdentityRole> roleManager, IMapper mapper)
         {
             _db = db;
             _roleManager = roleManager;
             _userManager = userManager;
+            _mapper = mapper;
         }
         [HttpPost("CreateTeam")]
         public async Task<IActionResult> createTeam(TeamViewModel inputTeamInfo)
         {
-            if (!ModelState.IsValid) return BadRequest("provide a proper information");
+            var response = new TeamResponse(){};
+            if (!ModelState.IsValid){
+                
+            } 
+                
             var email = User.FindFirstValue(ClaimTypes.Email);
-            if (String.IsNullOrEmpty(email)) return BadRequest("please login first");
+            if (String.IsNullOrEmpty(email)){
+                response.errors = new List<string>(){"Invalid user input"};  
+                return BadRequest(response);
+            } 
 
             try
             {
-                var user = await _userManager.FindByEmailAsync(email);
-                var team = new Team() {teamId = Guid.NewGuid().ToString(),  teamName = inputTeamInfo.teamName, createrId = user.Id, workingOn = inputTeamInfo.workingOn, description = inputTeamInfo.description, mainFunctions = inputTeamInfo.mainFunctions, CreatedAt=DateTime.Now };
-
-                var createdTeam =  _db.Team.Add(team);
+                var user = await _userManager.FindByEmailAsync(email); 
+                var teamCreated = _mapper.Map<Team>(inputTeamInfo);
+                teamCreated.createrId = user.Id;
+                var createdTeam =  _db.Team.Add(teamCreated);
+                var teamAdmin = new TeamAdmin(){teamId = teamCreated.teamId, userId=user.Id};
+                _db.TeamAdmins.Add(teamAdmin);
                 await _db.SaveChangesAsync();
-                
-                return Ok("createdTeam");
+                response.data = _mapper.Map<TeamResponseData>(teamCreated);
+                return Ok(response);
             }
             catch (Exception err)
             {
-                return BadRequest(err);
+                response.errors = new List<string>(){err.Message};  
+                return BadRequest(response);
             }
 
         }
+        
+        
 
     }
 }

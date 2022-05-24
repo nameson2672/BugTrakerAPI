@@ -12,6 +12,7 @@ using Microsoft.OpenApi.Models;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
+using AutoMapper;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,10 +23,6 @@ builder.Services.AddControllers().ConfigureApiBehaviorOptions(options =>
     {
         options.SuppressModelStateInvalidFilter = true;
     });
-//     .AddNewtonsoftJson(options =>
-//     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore
-// );
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
@@ -69,13 +66,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         
         options.TokenValidationParameters = tokenValidationParams2;
         options.Events = new JwtBearerEvents
-        {
-        //    OnTokenValidated = async (context) =>{
-               
-        //       var user = context.HttpContext.User.Claims.First();
-        //       var applicationUser = await _userManager.GetUserAsync(user);
-        //  },
-            
+        {            
             OnChallenge = async (context) =>
                 {
                     // this is a default method
@@ -103,7 +94,6 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 // Identity user and role provider
 builder.Services.AddIdentity<UserInfoModel, IdentityRole>().AddEntityFrameworkStores<ApplicationDbContext>().AddDefaultTokenProviders();
-//.AddTokenProvider<AesDataProtectorTokenProvider<UserInfoModel>>(TokenOptions.DefaultProvider)
 
 builder.Services.AddSwaggerGen(options =>
 {
@@ -145,6 +135,9 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddDefaultAWSOptions(builder.Configuration.GetAWSOptions());
 builder.Services.AddAWSService<IAmazonS3>();
 builder.Services.AddSingleton<IUploadToS3, UploadToS3>();
+
+// Adding Automapper
+builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
 var app = builder.Build();
 
