@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using BugTrakerAPI.Model;
 using Microsoft.AspNetCore.Identity;
 using System.Linq;
+using BugTrakerAPI.ViewModel;
+using BugTrakerAPI.Helper;
 
 namespace BugTrakerAPI.Controllers
 {
@@ -26,21 +28,45 @@ namespace BugTrakerAPI.Controllers
         [HttpPost("PostRole")]
         [AllowAnonymous]
         public async Task<IActionResult> createRole(string newRoleFromRequest){
-            if(String.IsNullOrEmpty(newRoleFromRequest)) return BadRequest("give input role to create");
+            var response = new RoleAddRes();
+            response.success = false;
+            if(String.IsNullOrEmpty(newRoleFromRequest)){
+                response.errors = new List<string>(){"provide a valid role input"};
+                return BadRequest(response);
+            } 
 
             var doesRolePreExist = await _roleManager.RoleExistsAsync(newRoleFromRequest);
-            if(doesRolePreExist) return BadRequest("Role Already exixts");
-
-            var createdRole = await _roleManager.CreateAsync(new IdentityRole(newRoleFromRequest));
+            if(doesRolePreExist) {
+                 response.errors = new List<string>(){"role already exists"};
+                return BadRequest(response);
+            }
+            var roleModel  = new IdentityRole(newRoleFromRequest);
+            var createdRole = await _roleManager.CreateAsync(roleModel);
             
-            if(!createdRole.Succeeded) return BadRequest("Faild to create role.");
-            return Ok("Created Sucessfully");
+            if(!createdRole.Succeeded) {
+                 response.errors = new SystemErrorParser().IdentityErrorParser(createdRole.Errors);
+
+                 return BadRequest(response);
+            }
+            response.success = true;
+            response.role = new RoleRes(){roleName=newRoleFromRequest, id=roleModel.Id};
+            return Ok(response);
         }
         [HttpGet("GetAllRoles")]
         [AllowAnonymous]
         public IActionResult GetAllRoles(){
             var roles =  _db.Roles.ToList();
-            return Ok(roles);
+            var response = new RoleList();
+            response.success = true;
+            var litOfroles = new List<RoleRes>();
+            foreach (IdentityRole role in roles){
+                var rol = new RoleRes();
+                rol.roleName = role.Name;
+                rol.id = role.Id;
+                litOfroles.Add(rol);
+            }
+            response.roles = litOfroles;
+            return Ok(response);
         }
         [HttpPost("GiveMeARole")]
         [AllowAnonymous]
