@@ -53,8 +53,15 @@ namespace BugTrakerAPI.Controllers
             if(!roleAssigned.Succeeded) return BadRequest(roleAssigned.Errors.ToList());
             return Ok("role assigned to user");
         }
-
-        
-
+        [HttpPost("GetRoleSOfUser")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetRoles(string email){
+            if(String.IsNullOrEmpty(email)) return BadRequest("Provide valid input");
+            var user = await _userManager.FindByEmailAsync(email);
+            if(user == null) return BadRequest("User not found");
+            var rolesOfUser = await _userManager.GetRolesAsync(user);
+            return Ok(rolesOfUser);
+        }
+          
     }
 }

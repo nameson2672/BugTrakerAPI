@@ -124,7 +124,7 @@ namespace BugTrakerAPI.Controllers
         public async Task<IActionResult> LoginUser(LoginViewModel user)
         {
             var response = new LoginRes();
-            if (ModelState.IsValid)
+            if (!ModelState.IsValid)
             {
 
 

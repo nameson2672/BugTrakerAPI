@@ -10,17 +10,17 @@ namespace BugTrakerAPI.DatabaseTableModel
         public string teamId {get; set;}
         [Required]
         public string teamName {get; set;}
-        [Required]
+        public string workingOn {get; set;}
+        public string mainFunctions {get; set;}
         public string description {get; set;}
-        [Required]
-        public string coverImageLink {get; set;}
-        public string teamAvatar {get; set;}
+        public string? coverImageLink {get; set;}
+        public string? teamAvatar {get; set;}
         public string createrId {get; set;}
          public DateTime CreatedAt { get; set; } = DateTime.Now;
-        public ICollection<TeamMembers> teamMembers {get; set;}
-        public ICollection<TeamAdmin> teamAdmin { get; set; }
-        public UserInfoModel userModel {get; set;}
+        public virtual ICollection<TeamMembers> teamMembers {get; set;}
+        public virtual ICollection<TeamAdmin> teamAdmin { get; set; }
         
+        public virtual UserInfoModel userModel {get; set;}
         
     }
 }
