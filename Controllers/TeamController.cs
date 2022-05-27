@@ -51,7 +51,7 @@ namespace BugTrakerAPI.Controllers
             }
             catch (Exception error)
             {
-                response.errors = new List<string>(){error.Message};
+                response.errors = new List<string>() { error.Message };
                 return BadRequest(response);
             }
 
@@ -172,5 +172,39 @@ namespace BugTrakerAPI.Controllers
                 return BadRequest(response);
             }
         }
+        [HttpPost("UpdateTeamInfo")]
+        public async Task<IActionResult> UpdateTeamInfo(TeamUpdateViewModle teamInfoToBeupdated)
+        {
+            var response = new TeamResponse();
+            var userId = User.Identities.ToList()[0].Claims.First().Value;
+            if (!ModelState.IsValid)
+            {
+                response.errors = new List<string>() { "Please provide a valid information" };
+                return BadRequest(response);
+            }
+            try
+            {
+                var team = _db.Team.Where(item => (item.teamId == teamInfoToBeupdated.teamId && item.createrId == userId)).ToList();
+                if(team == null){
+                    response.errors = new List<string>() { "Team id is not valid" };
+                    return Ok(response);
+                }
+                team[0].teamName = teamInfoToBeupdated.teamName == null ? team[0].teamName : teamInfoToBeupdated.teamName;
+                team[0].description = teamInfoToBeupdated.description == null ? team[0].description : teamInfoToBeupdated.description;
+                team[0].mainFunctions = teamInfoToBeupdated.mainFunctions == null ? team[0].mainFunctions : teamInfoToBeupdated.mainFunctions;
+                team[0].workingOn = teamInfoToBeupdated.workingOn == null ? team[0].workingOn : teamInfoToBeupdated.workingOn;
+                _db.Team.Update(team[0]);
+                await _db.SaveChangesAsync();
+                response.success = true;
+                response.data = _mapper.Map<TeamResponseData>(team[0]);
+                return Ok(response);
+            }
+            catch (Exception err){
+                response.errors = new List<string>(){err.Message};
+                var result = new ObjectResult(new { statusCode = 500, response });
+                return result;
+            }
+        }
+
     }
 }
