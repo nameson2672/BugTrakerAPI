@@ -4,6 +4,11 @@ namespace BugTrakerAPI.Model.ReturnModel
     {
         public TeamResponseData? data {get; set;}
     }
+    public class TeamsByCreatorResponse : CommonResponse{
+        public List<TeamResponseData>? data {set; get;}
+    }
+    
+    
     public class TeamResponseData 
     {
         public string teamId {get; set;}

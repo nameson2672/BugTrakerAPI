@@ -13,7 +13,7 @@ using Swashbuckle.AspNetCore.SwaggerGen;
 using System.Reflection;
 using System.Text;
 using AutoMapper;
-
+using BugTrakerAPI.Attributes;
 
 var builder = WebApplication.CreateBuilder(args);
 
