@@ -15,6 +15,8 @@ namespace BugTrakerAPI.Helper
             CreateMap<UserInfoModel, TeamAdminRes>().ForMember(dest =>
             dest.userId,
             opt => opt.MapFrom(src => src.Id));
+            CreateMap<Team, TeamWithAllMemberInfo>();
+            CreateMap<UserInfoModel, TeamMemberOrTeamAdminInfoModel>().ForMember(dest =>dest.Name, opt=> opt.MapFrom(src=>src.FirstName+ " "+src.LastName));
         }
 
     }

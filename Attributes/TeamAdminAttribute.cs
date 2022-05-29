@@ -28,9 +28,9 @@ namespace BugTrakerAPI.Attributes
             .GetService(typeof(ApplicationDbContext)) as ApplicationDbContext;
             var model = context.ActionArguments[_modelName] as AddUserToTeam;
             var correntUser = context.HttpContext.User.Identities.ToList()[0].Claims.First().Value;
-            var teamAdminObject = new TeamAdmin() { teamId = model.teamId, userId = correntUser };
-            var isCurrentUserIsATeamAdmin = dbContext.TeamAdmins.Find(teamAdminObject.teamId, teamAdminObject.userId);
-            if (isCurrentUserIsATeamAdmin == null)
+            var teamAdminObject = new TeamMembers() { teamId = model.teamId, userId = correntUser };
+            var isCurrentUserIsATeamAdmin = dbContext.TeamMembers.Find(teamAdminObject.teamId, teamAdminObject.userId);
+            if (isCurrentUserIsATeamAdmin == null || isCurrentUserIsATeamAdmin.isUserAdmin == false)
             {
                
                 var ers = "You are not an admin of the team";

@@ -9,16 +9,13 @@ namespace BugTrakerAPI.Model
 {
     public class UserInfoModel : IdentityUser
     {
+
         public string FirstName { get; set; }
         public string LastName {get; set;}
+        public string Name {get; set;}
         public string? AvatarLink {get; set;}
         public virtual ICollection<TeamMembers> teamMembers {get; set;}
-        public virtual ICollection<TeamAdmin> teamAdmin { get; set; }
         public virtual ICollection<Team> team {get;set;}
-        //public ICollection<TeamCreater> teamCreaters  { get; set; }
-        
-        
-        
         
     }
 }

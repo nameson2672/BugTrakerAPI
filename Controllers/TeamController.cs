@@ -80,10 +80,8 @@ namespace BugTrakerAPI.Controllers
                 var user = await _userManager.FindByEmailAsync(email);
                 var teamCreated = _mapper.Map<Team>(inputTeamInfo);
                 teamCreated.createrId = user.Id;
-                var createdTeam = _db.Team.Add(teamCreated);
-                var teamAdmin = new TeamAdmin() { teamId = teamCreated.teamId, userId = user.Id };
-                var newMbemberToTeam = new TeamMembers() { TeamId = teamCreated.teamId, UserId = user.Id };
-                _db.TeamAdmins.Add(teamAdmin);
+                var createdTeam = _db.Team.Add(teamCreated);        
+                var newMbemberToTeam = new TeamMembers() { teamId = teamCreated.teamId, userId = user.Id, isUserAdmin = true};
                 _db.TeamMembers.Add(newMbemberToTeam);
                 await _db.SaveChangesAsync();
                 response.success = true;
@@ -116,14 +114,11 @@ namespace BugTrakerAPI.Controllers
                     response.errors = new List<string>() { "the user you want to include in team doesen't exists or is not a member" };
                     return BadRequest(response);
                 }
-                var isUserAlreadyAdmin = _db.TeamAdmins.Find(inputValue.teamId, inputValue.userId);
-                if (isUserAlreadyAdmin != null)
+                if (isUserAnMember.isUserAdmin)
                 {
-                    response.errors = new List<string>() { "the user you want to include in team doesen't exists or is not a member" };
+                    response.errors = new List<string>() { "the user you want to include make an admin is already an admin" };
                     return BadRequest(response);
                 }
-                var newAdminEntry = new TeamAdmin() { teamId = inputValue.teamId, userId = inputValue.userId };
-                var addedToTeam = _db.TeamAdmins.Add(newAdminEntry);
                 await _db.SaveChangesAsync();
                 response.data = _mapper.Map<TeamAdminRes>(userTobeIncludedInTeam);
                 response.success = true;
@@ -159,7 +154,7 @@ namespace BugTrakerAPI.Controllers
                     response.errors = new List<string>() { "User is already a member" };
                     return BadRequest(response);
                 }
-                var newMemberEntry = new TeamMembers() { TeamId = inputValue.teamId, UserId = inputValue.userId };
+                var newMemberEntry = new TeamMembers() { teamId = inputValue.teamId, userId = inputValue.userId };
                 var addedToTeam = _db.TeamMembers.Add(newMemberEntry);
                 await _db.SaveChangesAsync();
                 response.data = _mapper.Map<TeamAdminRes>(userTobeIncludedInTeam);
@@ -185,7 +180,8 @@ namespace BugTrakerAPI.Controllers
             try
             {
                 var team = _db.Team.Where(item => (item.teamId == teamInfoToBeupdated.teamId && item.createrId == userId)).ToList();
-                if(team == null){
+                if (team == null)
+                {
                     response.errors = new List<string>() { "Team id is not valid" };
                     return Ok(response);
                 }
@@ -199,12 +195,64 @@ namespace BugTrakerAPI.Controllers
                 response.data = _mapper.Map<TeamResponseData>(team[0]);
                 return Ok(response);
             }
-            catch (Exception err){
-                response.errors = new List<string>(){err.Message};
+            catch (Exception err)
+            {
+                response.errors = new List<string>() { err.Message };
                 var result = new ObjectResult(new { statusCode = 500, response });
                 return result;
             }
         }
+        [HttpGet("GetTeamByID")]
+        public IActionResult GetTeamByID(string id)
+        {
+            var response = new TeamInfoWithAllMemberResponse();
+            if (String.IsNullOrEmpty(id))
+            {
+                response.errors = new List<string>() { "please provide valid id" };
+                return BadRequest(response);
+            }
+            try
+            {
+                var teamInfo = _db.Team.Where(item => item.teamId == id).ToList()[0];
+                if (teamInfo == null)
+                {
+                    response.errors = new List<string>() { "Team id is not valid" };
+                    return BadRequest(response);
+                }
+                var membersInTeam = from team in _db.Team
+                                    where team.teamId == id
+                                    join members in _db.TeamMembers on team.teamId equals members.teamId
+                                    join user in _db.Users on members.userId equals user.Id
+                                    select user;
+                response.data = _mapper.Map<TeamWithAllMemberInfo>(teamInfo);
+                var mamberList = new List<TeamMemberOrTeamAdminInfoModel>();
+                foreach (UserInfoModel item in membersInTeam.ToList()){
+                    mamberList.Add(_mapper.Map<TeamMemberOrTeamAdminInfoModel>(item));
+                }
+                    response.data.membersWithRole=mamberList;
+                return Ok(response);
+            }
+            catch (Exception err)
+            {
+                response.errors = new List<string>() { err.Message };
+                var result = new ObjectResult(new { statusCode = 500, response });
+                return result;
+            }
+        }
+        [HttpGet]
+        [AllowAnonymous]
+        public IActionResult Test()
+        {
+            //var forprog = _db.Team.Where(item=>item.createrId == "27787442-1357-45c6-966b-bcf0229358cf").Join(inner:)
+            var dataQuery = from team in _db.Team
+                            where team.createrId == "27787442-1357-45c6-966b-bcf0229358cf"
+                            join members in _db.TeamMembers on team.teamId equals members.teamId
+                            join user in _db.Users on members.userId equals user.Id
+                            select new { teamInfo = team, users = user };
+            var result = dataQuery.ToArray();
+            return Ok(result);
+        }
+
 
     }
 }

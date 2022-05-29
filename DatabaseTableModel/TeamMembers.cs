@@ -9,12 +9,13 @@ namespace BugTrakerAPI.DatabaseTableModel
     public class TeamMembers
     {
         [Required]
-        public string UserId { get; set; }
+        public string userId { get; set; }
         [Required]
-        public string TeamId { get; set; }
-        [ForeignKey(nameof(UserId))]
+        public string teamId { get; set; }
+        public bool isUserAdmin {get; set;}
+        [ForeignKey(nameof(userId))]
         public virtual UserInfoModel userModel { get; set; }
-        [ForeignKey(nameof(TeamId))]
+        [ForeignKey(nameof(teamId))]
         public virtual Team teamModel { get; set; }
     }
 }
