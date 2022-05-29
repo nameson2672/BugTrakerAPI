@@ -89,8 +89,7 @@ namespace BugTrakerAPI.Controllers
             userInfo.Email = user.Email;
             userInfo.PhoneNumber = user.PhoneNumber;
             userInfo.PasswordHash = user.Password;
-            userInfo.FirstName = user.Name;
-            userInfo.LastName = user.Name;
+            userInfo.Name = user.Name;
             userInfo.UserName = user.Email;
 
             var result = await _userManager.CreateAsync(userInfo, user.Password);
@@ -151,7 +150,7 @@ namespace BugTrakerAPI.Controllers
             response.success = true;
             response.data = new LoginCred
             {
-                Name = dbUser.FirstName,
+                Name = dbUser.Name,
                 Email = dbUser.Email,
                 PhoneNumber = dbUser.PhoneNumber,
                 Token = newlyFormTokens.Token,
@@ -203,7 +202,7 @@ namespace BugTrakerAPI.Controllers
             var emailConformationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
             MailModel mail = new();
             mail.toemail = user.Email;
-            mail.toname = user.FirstName + " " + user.LastName;
+            mail.toname = user.Name;
             mail.subject = "Verify Email";
             var url = "https://localhost:7186/api/User/verify?id=" + user.Id + "&code=" + emailConformationToken;
             var parseUrl = Url.Action("VerifyCodeFromMail", "User", new { userId = user.Id, code = emailConformationToken }, protocol: HttpContext.Request.Scheme);
@@ -270,7 +269,7 @@ namespace BugTrakerAPI.Controllers
 
             MailModel mail = new();
             mail.toemail = user.Email;
-            mail.toname = user.FirstName + " " + user.LastName;
+            mail.toname = user.Name;
             mail.subject = "Verify Email";
             var mailMSG = "To reset the password of your bug traker account click on link <a href=" + resetUrl + ">Link</a>";
             mail.message = mailMSG;

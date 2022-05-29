@@ -61,7 +61,7 @@ builder.Services.AddSingleton(tokenValidationParams);
 builder.Services.Configure<JwtConfig>(builder.Configuration.GetSection("JwtConfig"));
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(async options =>
+    .AddJwtBearer( options =>
     {
         
         options.TokenValidationParameters = tokenValidationParams2;
